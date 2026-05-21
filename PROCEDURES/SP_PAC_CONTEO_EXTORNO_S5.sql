@@ -1,4 +1,4 @@
-CREATE OR REPLACE PROCEDURE EXT.SP_PAC_CONTEO_REQ1 (OUT FILENAME VARCHAR(120) , IN i_pPlRunSeq VARCHAR(50))
+CREATE OR REPLACE PROCEDURE EXT.SP_PAC_CONTEO_EXTORNO_S5 (OUT FILENAME VARCHAR(120) , IN i_pPlRunSeq VARCHAR(50))
 LANGUAGE SQLSCRIPT 
 SQL SECURITY INVOKER 
 DEFAULT SCHEMA EXT AS
@@ -12,6 +12,7 @@ DEFAULT SCHEMA EXT AS
     |
     | Version: 0.1  SMM 20260331    Initial Version.
     | Version: 0.2  SMM 20260422    Cambiada información fichero. Mostrar POSITIONNAME,CONTEO
+    | Version: 1.0  SMM 20260521    Cambio de nombre procedimiento y fichero de salida
     |
     -----------------------------------------------------------------------
 */
@@ -22,7 +23,7 @@ BEGIN
 	
 	DECLARE v_id_proceso INTEGER;
 	DECLARE proc_name VARCHAR2(50) := ::CURRENT_OBJECT_SCHEMA ||'.'|| ::CURRENT_OBJECT_NAME;
-	DECLARE v_version VARCHAR2(10) := '0.2';
+	DECLARE v_version VARCHAR2(10) := '1.0';
 	DECLARE v_num_rows INTEGER := 0;
 	DECLARE v_log_count INTEGER := 0;
 	DECLARE v_permisos_log VARCHAR(50) := EXT.LIB_GLOBAL:GET_PERMISOS_LOG();
@@ -30,7 +31,7 @@ BEGIN
 	DECLARE v_eot DATE := EXT.LIB_CONSTANTES:v_eot;
 	DECLARE v_periodseq BIGINT;
 	DECLARE v_PeriodName VARCHAR(25);
-	DECLARE v_file_name VARCHAR(250) = 'CONTEO_PACREQ1_';
+	DECLARE v_file_name VARCHAR(250) = 'CONTEO_EXTORNOS_S5';
 	DECLARE v_const_processingunitseq BIGINT = 38280596832649217;
 	DECLARE v_const_credito VARCHAR(50) = 'DC-O-GEN-Inspector-PrimaCorregida-998';
 	DECLARE v_const_medida VARCHAR(50) = 'SM-O-GEN-Inspector-NumeroPolizas-998-Extornar-S5';
@@ -44,7 +45,7 @@ BEGIN
 		BEGIN
 			CALL EXT.LIB_GLOBAL:WRITE_LOG (v_permisos_log, proc_name , 'Error en procedimiento principal ' || proc_name || ' - SQL_ERROR_MESSAGE: ' || IFNULL(::SQL_ERROR_MESSAGE,'')
 																												|| '. SQL_ERROR_CODE: ' || ::SQL_ERROR_CODE, v_log_count, v_id_proceso, 'error');
-			--v_hayError := 1;
+			
 			v_num_rows := 0;
 		
 		UPDATE EXT.OUT_BATCH_CONTROL
@@ -59,8 +60,9 @@ BEGIN
 		END;
 	
 	--Inicializamos el idProceso
-		-- SELECT EXT.ID_PROCESO.NEXTVAL INTO v_id_proceso FROM DUMMY;
-		SELECT 0 INTO v_id_proceso FROM DUMMY;
+		SELECT EXT.ID_PROCESO.NEXTVAL INTO v_id_proceso FROM DUMMY;
+		
+		
 		CALL LIB_GLOBAL:WRITE_LOG (v_permisos_log, proc_name, 'Version: ' || v_version || ' - Procedure starting for plRunseq ' || i_pPlRunSeq, v_log_count, v_id_proceso, 'info');
 	
 		-- SELECCIONAMOS PERIODSEQ
@@ -76,12 +78,12 @@ BEGIN
 		INSERT INTO EXT.OUT_BATCH_CONTROL(ID_PROCESO,FILE_NAME,PROCEDURE_NAME,TARGET_ROWS,STATUS,START_DATE,END_DATE)
 		VALUES (v_id_proceso, FILENAME, ::CURRENT_OBJECT_NAME, v_num_rows, :v_const_out_batch_control_load, CURRENT_TIMESTAMP,NULL);
 		
-		-- DELETE FROM EXT.OUT_PAC_CONTEO_REQ1_FILE WHERE PERIODSEQ = v_periodseq;
-		TRUNCATE TABLE EXT.OUT_PAC_CONTEO_REQ1_FILE;
-		CALL LIB_GLOBAL:WRITE_LOG (v_permisos_log, proc_name, 'Borrar en OUT_PAC_CONTEO_REQ1_FILE. Filas: ' || ::rowcount, v_log_count, v_id_proceso, 'info');
+		TRUNCATE TABLE EXT.OUT_PAC_CONTEO_EXTORNO_S5_FILE;
+		
+		CALL LIB_GLOBAL:WRITE_LOG (v_permisos_log, proc_name, 'Borrar en OUT_PAC_CONTEO_EXTORNO_S5_FILE. Filas: ' || ::rowcount, v_log_count, v_id_proceso, 'info');
 		
 		
-		INSERT INTO EXT.OUT_PAC_CONTEO_REQ1_FILE(PERIODSEQ,POSITIONNAME,CONTEO)
+		INSERT INTO EXT.OUT_PAC_CONTEO_EXTORNO_S5_FILE(PERIODSEQ,POSITIONNAME,CONTEO)
 		SELECT v_periodseq,P.NAME,M.VALUE 
 		FROM CS_MEASUREMENT M 
 		INNER JOIN CS_POSITION P ON M.POSITIONSEQ = P.RULEELEMENTOWNERSEQ
@@ -96,9 +98,9 @@ BEGIN
 		
 		v_num_rows = ::rowcount;
 		
-		CALL LIB_GLOBAL:WRITE_LOG (v_permisos_log, proc_name, 'Fin INSERT en OUT_PAC_CONTEO_REQ1_FILE. Filas: ' || v_num_rows, v_log_count, v_id_proceso, 'info');
+		CALL LIB_GLOBAL:WRITE_LOG (v_permisos_log, proc_name, 'Fin INSERT en OUT_PAC_CONTEO_EXTORNO_S5_FILE. Filas: ' || v_num_rows, v_log_count, v_id_proceso, 'info');
 		
-		
+	
 		
 		
 		UPDATE EXT.OUT_BATCH_CONTROL SET STATUS = :v_const_out_batch_control_ok, TARGET_ROWS =v_num_rows, END_DATE = CURRENT_TIMESTAMP WHERE FILE_NAME = FILENAME AND ID_PROCESO = v_id_proceso;
@@ -115,14 +117,14 @@ DO BEGIN
 	
 	
 	DELETE FROM EXT.CSE_LOG WHERE CAST(DATETIME AS DATE) = CURRENT_DATE
-	AND OBJECT LIKE '%SP_PAC_CONTEO_REQ1%';
+	AND OBJECT LIKE '%SP_PAC_CONTEO_EXTORNO_S5%';
 	
-	 CALL EXT.SP_PAC_CONTEO_REQ1(FILENAME,PLRUNSEQ);
+	 CALL EXT.SP_PAC_CONTEO_EXTORNO_S5(FILENAME,PLRUNSEQ);
 	
 	SELECT * FROM EXT.CSE_LOG WHERE CAST(DATETIME AS DATE) = CURRENT_DATE
-	AND OBJECT LIKE '%SP_PAC_CONTEO_REQ1%';
+	AND OBJECT LIKE '%SP_PAC_CONTEO_EXTORNO_S5%';
 	
 	-- SELECT * FROM CS_PLRUN R INNER JOIN CS_PERIOD C ON R.PERIODSEQ = C.PERIODSEQ AND C.NAME = 'Marzo 2026';
-SELECT * FROM EXT.OUT_PAC_CONTEO_REQ1_FILE ORDER BY CONTEO DESC,POSITIONNAME;
+-- SELECT * FROM EXT.OUT_PAC_CONTEO_EXTORNO_S5_FILE ORDER BY CONTEO DESC,POSITIONNAME;
 END;
 
